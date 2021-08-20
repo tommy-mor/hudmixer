@@ -26,11 +26,24 @@ class Buf:
         self.st = self.st[i:]
 
     def eat_cpp_comment(self):
-        c1, c2 = self.st[0], self.st[1]
-        if c1 != '/' or c2 != '/':
+        if len(self.st) < 2:
             return False
 
-        self.eat_until('\n')
+        c1, c2 = self.st[0], self.st[1]
+        if c1 != "/" or c2 != "/":
+            return False
+
+        self.eat_until("\n")
+        return True
+
+    def eat_brackets(self):
+        c = self.st[0]
+        if c != "[":
+            return False
+
+        self.eat_one_char()
+        self.eat_until("]")
+        assert self.st[0] != "]"
         return True
 
     def eat_until(self, cs):
@@ -40,7 +53,7 @@ class Buf:
             i += 1
 
         cap = self.st[:i]
-        self.st = self.st[i+1:]
+        self.st = self.st[i + 1 :]
         return cap
 
     def get_deliminited_string(self):
@@ -53,7 +66,6 @@ class Buf:
 
 
 class Parser:
-
     def __init__(self, inputstring):
         self.items = {}
         self.buf = Buf(inputstring)
@@ -68,12 +80,12 @@ class Parser:
             if token == "#include":
                 includefile, _ = self.read_token()
                 # TODO parse includes now, or do it later
-                #self.includes.append(includefile)
+                # self.includes.append(includefile)
                 continue
 
             elif token == "#base":
                 basefile, _ = self.read_token()
-                #self.includes.append(basefile)
+                # self.includes.append(basefile)
                 continue
                 # TODO do base files
             # TODO check for conditionals
@@ -94,11 +106,16 @@ class Parser:
                 return items
 
             if key == "{" and not qtd:
-                raise Exception('two { in a row')
+                raise Exception("two { in a row")
+
+            if key == "GameUIButtonsSmall":
+                import pdb
+
+                pdb.set_trace()
 
             value, qtd = self.read_token()
 
-            print('value', value)
+            print("kv", key, value)
             if value == "{" and not qtd:
                 items[key] = self.recursive_parse_file()
             else:
@@ -106,10 +123,11 @@ class Parser:
 
     def read_token(self):
         # eat whitespace/comments
-        while(1):
+        while 1:
             self.buf.eat_white_space()
 
-            if not self.buf.eat_cpp_comment():
+            if (not self.buf.eat_cpp_comment()) \
+               and (not self.buf.eat_brackets()):
                 break
 
         c = self.buf.peek()

@@ -7,14 +7,15 @@ from shutil import copytree
 def ensure_is_hud(fname):
     path = Path(fname)
 
-    clientscheme = path / 'resource' / 'clientscheme.res'
+    clientscheme = path / "resource" / "clientscheme.res"
     assert clientscheme.exists() and not clientscheme.is_dir()
 
-    hudlayout = path / 'scripts' / 'hudlayout.res'
+    hudlayout = path / "scripts" / "hudlayout.res"
     assert hudlayout.exists() and not hudlayout.is_dir()
 
+
 def count_until_matches_bracket(text, i):
-    #assert text[i-1] == "{"
+    # assert text[i-1] == "{"
 
     depth = 1
     i += 1
@@ -30,8 +31,7 @@ def count_until_matches_bracket(text, i):
 
         if depth < 0:
             # TODO NO! this lets us exit early with no find.
-            raise Exception('too many closing brackets')
-
+            raise Exception("too many closing brackets")
 
         i += 1
 
@@ -41,7 +41,7 @@ def find_ignoring(text, search):
         search = [search]
 
     def count_until_nl(i):
-        while text[i] != '\n':
+        while text[i] != "\n":
             i += 1
         return i
 
@@ -56,9 +56,9 @@ def find_ignoring(text, search):
             if text[i:].startswith(s):
                 return i
 
-        if text[i:].startswith('//'):
+        if text[i:].startswith("//"):
             i = count_until_nl(i)
-        elif text[i:].startswith('{'):
+        elif text[i:].startswith("{"):
             i = count_until_matches_bracket(text, i + 1)
             assert text[i] == "}"
 
@@ -72,6 +72,24 @@ def string_splice(base, inst, index):
     basea, baseb = base[:index], base[index:]
     return basea + inst + baseb
 
+
+def ident(n):
+    return "\n" * n
+
+
+def format_dict(i, dic):
+    if type(dic) == str:
+        return dic
+
+    st = ident(i) + "{\n"
+    for k, v in dic.items():
+        assert type(k) == str
+        st += ident(i + 1) + k
+        st += "\t" + format_dict(i + 1, v)
+    st += ident(i) + "}\n"
+    return st
+
+
 class BaseHud:
     # hud that we are importing properties into.
     # will have to be able to export into final hud, splicing in important info
@@ -83,14 +101,14 @@ class BaseHud:
     def splice(self, fname, splice_dict):
         # TODO should only copy from copied hud, then update file in place
         f = self.srcdir / fname
-        assert f.exists() and f.suffix == '.res'
+        assert f.exists() and f.suffix == ".res"
 
-        self.text = ''
+        self.text = ""
 
         with open(f) as f:
             self.text = f.read()
 
-        assert self.text != ''
+        assert self.text != ""
 
         def splice_rec(i, splice_dict):
             # i is where to start.
@@ -107,26 +125,26 @@ class BaseHud:
                     i += len(key)
 
                     if type(value) == str:
-                        raise Exception('cant overwrite existing value')
+                        raise Exception("cant overwrite existing value")
                     elif type(value) == dict:
                         # must absorb until openbracket
-                        a = find_ignoring(self.text[i:], '{') + 1
+                        a = find_ignoring(self.text[i:], "{") + 1
                         splice_rec(a + i, value)
                     else:
-                        raise Exception('malformed splice dict')
+                        raise Exception("malformed splice dict")
                 else:
-                    print('inserting value', value)
+                    print("inserting value", value)
                     # key not found, insert it
                     end_bracket_loc = count_until_matches_bracket(self.text, i)
-                    self.text = string_splice(self.text, key + "\t" + value,
-                                              end_bracket_loc - 1)
+                    self.text = string_splice(
+                        self.text, key + "\t" + format_dict(0, value), end_bracket_loc - 1
+                    )
 
         splice_rec(0, splice_dict)
 
         s = self.text
-        delattr(self, 'text')
+        delattr(self, "text")
         return s
-
 
     def export(self, outdir):
         outdir_ = copytree(self.srcdir, outdir)

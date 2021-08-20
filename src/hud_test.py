@@ -44,12 +44,16 @@ with hud_test("../huds/idhud") as h:
         {"Scheme": {"Fonts":
                     {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
     )
+    new = h.splice(
+        "resource/clientscheme_small.res",
+        {"Scheme": {"NewColors": {'"TommyColor"': '"0 0 0 0"'}}},
+    )
     try:
         parsed = read.Parser(new).items
     except Exception:
         import pdb
         pdb.post_mortem()
-    print(new)
+    #print(new)
 
 
 st = "blah blah blah Source"
@@ -89,5 +93,10 @@ with hud_test("../huds/TF2-Default-Hud") as h:
         {"Scheme": {"Fonts":
                     {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
     )
-    parsed = read.Parser(new).items
     print(new)
+    try:
+        parsed = read.Parser(new).items
+    except:
+        import pdb
+        pdb.post_mortem()
+    #print(new)
