@@ -1,4 +1,5 @@
 import hud
+import read
 import filecmp
 import shutil
 
@@ -38,6 +39,16 @@ with hud_test("../huds/idhud") as h:
         "resource/clientscheme_small.res",
         {"Scheme": {"Colors": {'"TommyColor"': '"0 0 0 0"'}}},
     )
+    new = h.splice(
+        "resource/clientscheme.res",
+        {"Scheme": {"Fonts":
+                    {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
+    )
+    try:
+        parsed = read.Parser(new).items
+    except Exception:
+        import pdb
+        pdb.post_mortem()
     print(new)
 
 
@@ -70,3 +81,13 @@ assert st[a:] == "Source {}\n"
 # TODO test inserting multiple kv pairs, or assert just supporting only one
 # TODO make it actually modify file, then start working on feature extraction
 # code.
+# TODO figure out weird syntax on idhud/resource/clientscheme.res:767
+
+with hud_test("../huds/TF2-Default-Hud") as h:
+    new = h.splice(
+        "resource/clientscheme.res",
+        {"Scheme": {"Fonts":
+                    {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
+    )
+    parsed = read.Parser(new).items
+    print(new)

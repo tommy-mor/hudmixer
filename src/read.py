@@ -68,12 +68,12 @@ class Parser:
             if token == "#include":
                 includefile, _ = self.read_token()
                 # TODO parse includes now, or do it later
-                self.includes.append(includefile)
+                #self.includes.append(includefile)
                 continue
 
             elif token == "#base":
                 basefile, _ = self.read_token()
-                self.includes.append(basefile)
+                #self.includes.append(basefile)
                 continue
                 # TODO do base files
             # TODO check for conditionals
