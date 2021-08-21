@@ -108,14 +108,8 @@ class Parser:
             if key == "{" and not qtd:
                 raise Exception("two { in a row")
 
-            if key == "GameUIButtonsSmall":
-                import pdb
-
-                pdb.set_trace()
-
             value, qtd = self.read_token()
 
-            print("kv", key, value)
             if value == "{" and not qtd:
                 items[key] = self.recursive_parse_file()
             else:
@@ -141,3 +135,8 @@ class Parser:
         token = self.buf.eat_until(WS)
         return token, False
         # TODO handle conditionals []
+
+
+def parse_file(fname):
+    with open(fname) as f:
+        return Parser(f.read()).items

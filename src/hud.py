@@ -96,10 +96,14 @@ class BaseHud:
 
     def __init__(self, fname):
         self.srcdir = Path(fname)
+
+        # relativefname :=> new file contents
+        self.changedFiles = {}
         ensure_is_hud(fname)
 
     def splice(self, fname, splice_dict):
-        # TODO should only copy from copied hud, then update file in place
+        # NOTE: can only insert one value at a time without breaking
+
         f = self.srcdir / fname
         assert f.exists() and f.suffix == ".res"
 
@@ -112,6 +116,8 @@ class BaseHud:
 
         def splice_rec(i, splice_dict):
             # i is where to start.
+            if len(splice_dict) > 1:
+                raise Exception('can only insert one thing at a time')
 
             for key, value in splice_dict.items():
                 # todo if it doesnt find it
@@ -144,12 +150,35 @@ class BaseHud:
 
         s = self.text
         delattr(self, "text")
+        self.changedFiles[fname] = s
         return s
 
-    def export(self, outdir):
-        outdir_ = copytree(self.srcdir, outdir)
-        assert outdir == outdir_
-        return outdir
+
+def permute(strings):
+    r = []
+    for s in strings:
+        r.append(s)
+        r.append('"' + s + '"')
+        r.append(s.lower())
+        r.append('"' + s.lower() + '"')
+    return r
+
+
+def collect_values_from_keys(dic, keys):
+    ret = []
+
+    COLOR_KEYS = keys
+
+    def search_rec(dic):
+        for key, value in dic.items():
+            if key in COLOR_KEYS:
+                ret.append(value)
+            else:
+                if type(value) == dict:
+                    search_rec(value)
+
+    search_rec(dic)
+    return ret
 
 
 class ImportHud:
@@ -157,5 +186,28 @@ class ImportHud:
     # need to extract entire files, and everything referenced in them.
 
     def __init__(self, fname):
-        self.srcdir = fname
+        self.srcdir = Path(fname)
         ensure_is_hud(fname)
+
+        # precompute frequently referenced files
+        self.clientscheme = read.parse_file(
+            self.srcdir / "resource/clientscheme.res"
+        )
+
+        self.hudlayout = read.parse_file(
+            self.srcdir / "scripts/hudlayout.res"
+        )
+
+    def collect_colors(self, f):
+
+        COLOR_KEYS = permute(["fgColor", "bgColor"])
+
+        items = read.parse_file(self.srcdir / f)
+        return collect_values_from_keys(items, COLOR_KEYS)
+
+    def collect_colors_defs(self, colors):
+        # do we have to handle quote/unqoute of these things?
+        # find in testing I guess
+
+        # TODO 
+        colors = self.clientscheme[""]

@@ -1,21 +1,11 @@
 import hud
 import read
 import filecmp
+import difflib
 import shutil
+import os
+from test_util import deep_compare
 
-
-def deep_compare(a, b):
-    diffs = []
-
-    def rec(dcmp):
-        diffs.extend(dcmp.diff_files)
-        for subdcmp in dcmp.subdirs.values():
-            rec(subdcmp)
-
-    print("comparing", a, b)
-    dcmp = filecmp.dircmp(a, b)
-    rec(dcmp)
-    print("diff files", diffs)
 
 
 class hud_test:
@@ -82,7 +72,6 @@ Source {}
 a = hud.find_ignoring(st, "Source")
 assert st[a:] == "Source {}\n"
 
-# TODO test inserting multiple kv pairs, or assert just supporting only one
 # TODO make it actually modify file, then start working on feature extraction
 # code.
 # TODO figure out weird syntax on idhud/resource/clientscheme.res:767
@@ -93,10 +82,6 @@ with hud_test("../huds/TF2-Default-Hud") as h:
         {"Scheme": {"Fonts":
                     {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
     )
-    print(new)
-    try:
-        parsed = read.Parser(new).items
-    except:
-        import pdb
-        pdb.post_mortem()
+    parsed = read.Parser(new).items
+    parsed['Scheme']['Fonts']['"Crosshairs24"']['1']['"meme"'] == '"stuff"'
     #print(new)
