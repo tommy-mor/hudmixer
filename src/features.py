@@ -13,22 +13,39 @@ class Health(Feature):
 
         self.fromhud = hud
 
-    def gather(self):
+        # fname :=> [(from, to)] translations
+        self.file_copies = {}
+        # fname :=> splice dict
+        self.file_changes = {}
+
+    def gather(self, outdir):
         self.collect_file("resource/ui/hudammoweapons.res")
+        # TODO hudlayout
 
     def collect_file(self, f):
         # copy entire file
         # TODO
 
         # collect all color definitions
-        colors = self.fromhud.collect_colors(f)
+        colors = self.fromhud.collect(f, ["fgColor", "bgColor"])
         print('colors', colors)
 
         colordefs = self.fromhud.collect_color_defs(colors)
         print('colordefs', colordefs)
 
-        # collect all font definitions
-        pass
+        # check that colors are colors
+        for v in colordefs.values():
+            a, b, c, d = v.split(' ')
+            int(a), int(b), int(c), int(d)
+
+        fonts = self.fromhud.collect(f, ["font", "font_minmode"])
+        fonts = set(list(fonts))
+        fontdefs, fontfiledefs, fontpaths = self.fromhud.collect_font_defs(fonts)
+
+        #{HERE}
+        # TODO rename to avoid collisions
+        # TODO have all these methods return splice dicts
+
 
 
 class OutHud:
@@ -54,7 +71,7 @@ class OutHud:
 
         # TODO go through features, and apply them
         for f in self.features:
-            f.gather()
+            f.gather(outdir)
 
         for fname, newtext in []:
             newfname = Path(outdir) / fname

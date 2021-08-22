@@ -1,3 +1,4 @@
+from pathlib import Path
 # https://sourcegraph.com/github.com/TheAlePower/TeamFortress2@1b81dded673d49adebf4d0958e52236ecc28a956/-/blob/tf2_src/tier1/KeyValues.cpp?L2388:17
 
 # note, support chained key values? (ChainKeyValue)
@@ -62,11 +63,33 @@ class Buf:
 
         s = self.eat_until('"')
 
-        return '"' + s + '"'
+        #return '"' + s + '"'
+        return s
+
+
+def strip_quotes(string):
+    '''remove quotes if they are there'''
+    if string[0] == '"':
+        assert string[-1] == '"'
+        return string[1:-1]
+    return string
+
+
+def merge_dict(new, modify):
+    '''deep merge two dictionaries'''
+    # TODO
+    for key, value in new.items():
+        if isinstance(value, dict):
+            node = modify.setdefault(key, {})
+            merge_dict(value, node)
+        else:
+            modify[key] = value
+    return modify
 
 
 class Parser:
-    def __init__(self, inputstring):
+    def __init__(self, inputstring, path=''):
+        self.path = Path(path)  # for base and include
         self.items = {}
         self.buf = Buf(inputstring)
         self.parse_file()
@@ -75,26 +98,27 @@ class Parser:
         return self.buf.st
 
     def parse_file(self):
+
         while self.buf.is_valid():
             token, _ = self.read_token()
-            if token == "#include":
+            stripped = strip_quotes(token)
+            if stripped == "#include" or stripped == "#base":
+                # include is appended, and base is merged
+                # but not sure how those are different so..
                 includefile, _ = self.read_token()
-                # TODO parse includes now, or do it later
-                # self.includes.append(includefile)
-                continue
+                f = (self.path / strip_quotes(includefile)).resolve()
+                if f.is_file():
+                    new_items = parse_file(f.resolve())
+                    # TODO make sure that it doesn't override
+                    # values, it keeps oldest ones
+                    self.items = merge_dict(new_items, self.items)
+            else:
+                opn, qtd = self.read_token()
 
-            elif token == "#base":
-                basefile, _ = self.read_token()
-                # self.includes.append(basefile)
-                continue
-                # TODO do base files
-            # TODO check for conditionals
-            opn, qtd = self.read_token()
+                assert opn == "{"
+                assert not qtd
 
-            assert opn == "{"
-            assert not qtd
-
-            self.items[token] = self.recursive_parse_file()
+                self.items[token] = self.recursive_parse_file()
 
     def recursive_parse_file(self):
         # parse until closing block, returning dict of pairs
@@ -138,5 +162,6 @@ class Parser:
 
 
 def parse_file(fname):
+    path = Path(fname).resolve().parent
     with open(fname) as f:
-        return Parser(f.read()).items
+        return Parser(f.read(), path).items

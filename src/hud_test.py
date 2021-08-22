@@ -18,29 +18,31 @@ class hud_test:
 
     def __exit__(self, type, value, traceback):
         outname = "../huds/outhud"
-        shutil.rmtree(outname)
-        self.hud.export(outname)
+        # shutil.rmtree(outname)
+        # self.hud.export(outname)
 
-        deep_compare(self.hud.srcdir, outname)
+        #deep_compare(self.hud.srcdir, outname)
 
 
 with hud_test("../huds/idhud") as h:
     new = h.splice(
         "resource/clientscheme_small.res",
-        {"Scheme": {"Colors": {'"TommyColor"': '"0 0 0 0"'}}},
+        {"Scheme": {"Colors": {'TommyColor': '0 0 0 0'}}},
     )
     new = h.splice(
         "resource/clientscheme.res",
         {"Scheme": {"Fonts":
-                    {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
+                    {'Crosshairs24': {"1": {'meme': 'stuff'}}}}}
     )
     new = h.splice(
         "resource/clientscheme_small.res",
-        {"Scheme": {"NewColors": {'"TommyColor"': '"0 0 0 0"'}}},
+        {"Scheme": {"NewColors": {'TommyColor': '0 0 0 0'}}},
     )
     try:
         parsed = read.Parser(new).items
-    except Exception:
+        assert parsed['Scheme']['NewColors']['TommyColor'] == '0 0 0 0'
+    except Exception as e:
+        print(e)
         import pdb
         pdb.post_mortem()
     #print(new)
@@ -80,8 +82,36 @@ with hud_test("../huds/TF2-Default-Hud") as h:
     new = h.splice(
         "resource/clientscheme.res",
         {"Scheme": {"Fonts":
-                    {'"Crosshairs24"': {"1": {'"meme"': '"stuff"'}}}}}
+                    {'Crosshairs24': {"1": {'meme': 'stuff'}}}}}
     )
     parsed = read.Parser(new).items
-    parsed['Scheme']['Fonts']['"Crosshairs24"']['1']['"meme"'] == '"stuff"'
+    parsed['Scheme']['Fonts']['Crosshairs24']['1']['meme'] == 'stuff'
     #print(new)
+
+
+# multiple splices
+
+with hud_test("../huds/TF2-Default-Hud") as h:
+    parsed = h.file_items('resource/clientscheme.res')
+
+    oldfonts = parsed['Scheme']['Fonts'].keys()
+    oldfont = parsed['Scheme']['Fonts']['HudFontSmall']
+
+    new = h.splice(
+        "resource/clientscheme.res",
+        {"Scheme": {"Fonts":
+                    {'Crosshairs24': {"1": {'meme': 'stuff'}},
+                     'HudFontSmall': {"2": {'xd': 'test'}}}}}
+    )
+
+    parsed = read.Parser(new).items
+    newfonts = set(parsed['Scheme']['Fonts'].keys()) - set(oldfonts)
+
+    assert parsed['Scheme']['Fonts']['Crosshairs24']['1']['meme'] == 'stuff'
+
+    oldfont = parsed['Scheme']['Fonts']['HudFontSmall']
+    assert oldfont['2'] == {'xd': 'test'} # {HERE} ?????????
+    #print(new)
+
+
+# multiple splices

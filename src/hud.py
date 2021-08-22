@@ -61,7 +61,10 @@ def find_ignoring(text, search):
         elif text[i:].startswith("{"):
             i = count_until_matches_bracket(text, i + 1)
             assert text[i] == "}"
-
+            i += 1
+        elif text[i:].startswith("}"):
+            # not found
+            return None
         elif text[i:].startswith("#base") or text[i:].startswith("#include"):
             i = count_until_nl(i)
         else:
@@ -77,9 +80,14 @@ def ident(n):
     return "\n" * n
 
 
+def wrap(string):
+    assert string[0] != '"' and string[-1] != '"'
+    return '"' + string + '"'
+
+
 def format_dict(i, dic):
     if type(dic) == str:
-        return dic
+        return wrap(dic)
 
     st = ident(i) + "{\n"
     for k, v in dic.items():
@@ -101,6 +109,9 @@ class BaseHud:
         self.changedFiles = {}
         ensure_is_hud(fname)
 
+    def file_items(self, fname):
+        return read.parse_file(self.srcdir / fname)
+
     def splice(self, fname, splice_dict):
         # NOTE: can only insert one value at a time without breaking
 
@@ -114,17 +125,16 @@ class BaseHud:
 
         assert self.text != ""
 
-        def splice_rec(i, splice_dict):
+        def splice_rec(i, splice_dict, addr):
             # i is where to start.
-            if len(splice_dict) > 1:
-                raise Exception('can only insert one thing at a time')
 
             for key, value in splice_dict.items():
+                path.append(key)
                 # todo if it doesnt find it
                 ki = find_ignoring(self.text[i:], key)
 
                 if ki is not None:
-                    i = ki + i
+                    i += ki
 
                     assert self.text[i:].startswith(key)
 
@@ -135,7 +145,7 @@ class BaseHud:
                     elif type(value) == dict:
                         # must absorb until openbracket
                         a = find_ignoring(self.text[i:], "{") + 1
-                        splice_rec(a + i, value)
+                        splice_rec(a + i, value, path)
                     else:
                         raise Exception("malformed splice dict")
                 else:
@@ -145,8 +155,34 @@ class BaseHud:
                     self.text = string_splice(
                         self.text, key + "\t" + format_dict(0, value), end_bracket_loc - 1
                     )
+                break  # only do one
 
-        splice_rec(0, splice_dict)
+        def delete_rec(dic, path):
+            if len(path) == 1:
+                # end of path
+                key = path.pop()
+                del dic[key]
+
+            elif len(path) > 1:
+                key = path.pop()
+                delete_rec(dic[key], path)
+
+                # get rid of empty
+                if len(dic[key]) == 0:
+                    del dic[key]
+
+            else:
+                assert not 'impossible'
+
+        while len(splice_dict) > 0:
+            # keep splicing until splice dict is empty
+            # keep track of current angle
+            path = []
+            splice_rec(0, splice_dict, path)
+
+            # delete path in splice_dict
+            path.reverse()
+            delete_rec(splice_dict, path)
 
         s = self.text
         delattr(self, "text")
@@ -161,7 +197,7 @@ def permute(strings):
         r.append('"' + s + '"')
         r.append(s.lower())
         r.append('"' + s.lower() + '"')
-    return r
+    return list(set(r))
 
 
 def collect_values_from_keys(dic, keys):
@@ -198,16 +234,33 @@ class ImportHud:
             self.srcdir / "scripts/hudlayout.res"
         )
 
-    def collect_colors(self, f):
-
-        COLOR_KEYS = permute(["fgColor", "bgColor"])
+    def collect(self, f, qry):
+        COLOR_KEYS = permute(qry)
 
         items = read.parse_file(self.srcdir / f)
         return collect_values_from_keys(items, COLOR_KEYS)
 
-    def collect_colors_defs(self, colors):
-        # do we have to handle quote/unqoute of these things?
-        # find in testing I guess
+    def collect_at(self, dic, path, keys):
+        search = dic
 
-        # TODO 
-        colors = self.clientscheme[""]
+        for loc in path:
+            search = search[loc]
+
+        ret = {}
+        for key in keys:
+            ret[key] = search[key]
+
+        return ret
+
+    def collect_color_defs(self, colors):
+
+        return self.collect_at(self.clientscheme, ['Scheme', 'Colors'], colors)
+
+    def collect_font_defs(self, fonts):
+        fonts = self.collect_at(self.clientscheme, ['Scheme', 'Fonts'], fonts)
+        font_names = collect_values_from_keys(fonts, permute(["name"]))
+        # TODO there can be fontfiles at BitmapFontFiles, ?others?,
+        # not just CustomFontFiles
+        font_definitions = self.collect_at(self.clientscheme, ['Scheme', 'CustomFontFiles'], font_names)
+        font_paths = collect_values_from_keys(font_definitions, permute(["font"]))
+        return fonts, font_definitions, font_paths
