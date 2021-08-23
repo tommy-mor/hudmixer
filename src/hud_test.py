@@ -97,6 +97,8 @@ with hud_test("../huds/TF2-Default-Hud") as h:
     oldfonts = parsed['Scheme']['Fonts'].keys()
     oldfont = parsed['Scheme']['Fonts']['HudFontSmall']
 
+    assert '2' not in oldfont
+
     new = h.splice(
         "resource/clientscheme.res",
         {"Scheme": {"Fonts":
@@ -110,8 +112,7 @@ with hud_test("../huds/TF2-Default-Hud") as h:
     assert parsed['Scheme']['Fonts']['Crosshairs24']['1']['meme'] == 'stuff'
 
     oldfont = parsed['Scheme']['Fonts']['HudFontSmall']
-    assert oldfont['2'] == {'xd': 'test'} # {HERE} ?????????
-    #print(new)
+    assert oldfont['2'] == {'xd': 'test'}
 
 
 # multiple splices

@@ -11,7 +11,7 @@ class hud_test:
     def __enter__(self):
         hud = BaseHud(self.fname)
 
-        self.outname = "../huds/outhud"
+        self.outname = "/home/tommy/.steam/steam/steamapps/common/Team Fortress 2/tf/custom/outhud"
 
         # ignore if dir not there
         shutil.rmtree(self.outname, ignore_errors=True)
@@ -25,12 +25,10 @@ class hud_test:
 
         deep_compare(self.fname, self.outname)
 
-try:
-    with hud_test("../huds/TF2-Default-Hud") as out:
-        improved = ImportHud("../huds/rayshud/")
-        
-        out.add_feature(features.Health(improved))
-except Exception as e:
-    print(e)
+
+with hud_test("../huds/flawhud") as out:
+    improved = ImportHud("../huds/rayshud/")
+
+    out.add_feature(features.Health(improved))
 
 # TODO improved deault hud tests, where some files are completely unchanged. in that case, fill in required values from default tf2 hud.
