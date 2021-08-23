@@ -1,7 +1,9 @@
-from hud import ImportHud, BaseHud
+from hud import ImportHud, BaseHud, OutHud
 import features
 import shutil
 from test_util import deep_compare
+
+import feature_list as fl
 
 
 class hud_test:
@@ -16,7 +18,7 @@ class hud_test:
         # ignore if dir not there
         shutil.rmtree(self.outname, ignore_errors=True)
 
-        self.out = features.OutHud(hud, self.outname)
+        self.out = OutHud(hud, self.outname)
 
         return self.out
 
@@ -29,6 +31,6 @@ class hud_test:
 with hud_test("../huds/flawhud") as out:
     improved = ImportHud("../huds/rayshud/")
 
-    out.add_feature(features.Health(improved))
+    out.add_feature(fl.Health(improved))
 
 # TODO improved deault hud tests, where some files are completely unchanged. in that case, fill in required values from default tf2 hud.
