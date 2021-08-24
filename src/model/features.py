@@ -126,8 +126,13 @@ class Feature:
         self.hudlayout_changes[itemname] = ret
 
     def animation_grab(self, eventname):
+        if eventname in self.event_copies:
+            return
+
+        # TODO close over events that are referenced by RunEvent and StopEvent
         if eventname in self.fromhud.events:
             event = self.fromhud.events[eventname]
+
 
             colors = animation.collect_list(event, COLOR_ANIM_STRINGS)
 
@@ -135,6 +140,13 @@ class Feature:
 
             event = animation.translate_clist_colors(event, translation_colors, COLOR_ANIM_STRINGS)
             self.event_copies[eventname] = event
+
+            # look for referenced events
+            for cmd in event:
+                if cmd[0] in ["RunEvent"]:
+                    otherevent = cmd[1]
+                    self.animation_grab(otherevent)
+                    
 
 
 # PROBLEM: animations don't load

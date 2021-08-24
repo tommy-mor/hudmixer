@@ -123,7 +123,7 @@ def format_events(events):
         for cmd in cmdlist:
             st += '\t' + '\t'.join(wrap_if_spaces(param) for param in cmd)
             st += '\n'
-        st += '}\n'
+        st += '}\n\n'
     return st
 
 
