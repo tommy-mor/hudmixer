@@ -28,9 +28,14 @@ class hud_test:
         deep_compare(self.fname, self.outname)
 
 
-with hud_test("../huds/flawhud") as out:
-    improved = ImportHud("../huds/rayshud/")
+with hud_test("../huds/flawhud-master/") as out:
+    rays = ImportHud("../huds/rayshud/")
+    more = ImportHud("../huds/m0rehud-5.9/")
+    ahud = ImportHud("../huds/ahud-master/")
 
-    out.add_feature(fl.Health(improved))
+    out.add_feature(fl.Scoreboard(more))
+    out.add_feature(fl.Health(ahud))
+    out.add_feature(fl.Ammo(rays))
+    out.add_feature(fl.TargetId(rays))
 
 # TODO improved deault hud tests, where some files are completely unchanged. in that case, fill in required values from default tf2 hud.

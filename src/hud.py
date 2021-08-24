@@ -3,6 +3,17 @@ import read
 from pathlib import Path
 from shutil import copytree, copy, move
 from features import Feature
+from animation import AnimationParser, ManifestParser, format_manifest, format_events
+
+
+# TODO use this more
+def gen_name(desired, existing_names):
+    if desired in existing_names:
+        root, end = desired.split('.')
+        desired = root + '_' + '.' + end
+        return gen_name(desired, existing_names)
+    else:
+        return desired
 
 
 def ensure_is_hud(fname):
@@ -15,6 +26,20 @@ def ensure_is_hud(fname):
     assert hudlayout.exists() and not hudlayout.is_dir()
 
 
+def collect_values_from_keys(dic, keys):
+    ret = []
+    def search_rec(dic):
+        for key, value in dic.items():
+            if key in keys:
+                ret.append(value)
+            else:
+                if type(value) == dict:
+                    search_rec(value)
+
+    search_rec(dic)
+    return ret
+
+
 class BaseHud:
     # hud that we are importing properties into.
     # will have to be able to export into final hud, splicing in important info
@@ -25,33 +50,6 @@ class BaseHud:
         # relativefname :=> new file contents
         self.changedFiles = {}
         ensure_is_hud(fname)
-
-
-def permute(strings):
-    r = []
-    for s in strings:
-        r.append(s)
-        r.append('"' + s + '"')
-        r.append(s.lower())
-        r.append('"' + s.lower() + '"')
-    return list(set(r))
-
-
-def collect_values_from_keys(dic, keys):
-    ret = []
-
-    COLOR_KEYS = keys
-
-    def search_rec(dic):
-        for key, value in dic.items():
-            if key in COLOR_KEYS:
-                ret.append(value)
-            else:
-                if type(value) == dict:
-                    search_rec(value)
-
-    search_rec(dic)
-    return ret
 
 
 class ImportHud:
@@ -74,17 +72,42 @@ class ImportHud:
             self.srcdir / "scripts/hudlayout.res"
         )
 
+        self.read_animation_manifest()
+
+    def read_animation_manifest(self):
+        self.events = {}
+
+        manifest = self.srcdir / 'scripts' / 'hudanimations_manifest.txt'
+        if manifest.resolve().exists():
+            with open(manifest) as f:
+                files = ManifestParser(f.read()).animation_files
+                
+            for path in files:
+                # problem: these should be in order, they are not.
+                newpath = self.srcdir / path
+                if newpath.resolve().exists():
+                    print('reading ', newpath)
+                    with open(newpath) as f:
+                        # shallow merge
+                        self.events.update(AnimationParser(f.read()).items)
+        else:
+            hudanimations = self.srcdir / 'scripts' / 'hudanimations.txt'
+            with open(hudanimations) as f:
+                self.events.update(AnimationParser(f.read()).items)
+
     def collect(self, f, qry):
-        COLOR_KEYS = permute(qry)
 
         items = read.parse_file(self.srcdir / f)
-        return collect_values_from_keys(items, COLOR_KEYS)
+        return collect_values_from_keys(items, qry)
 
     def collect_at(self, dic, path, keys, wrap=False):
 
         def rec(dic):
             if len(path) == 0:
-                return {key: dic[key] for key in keys}
+                for key in keys:
+                    if key not in dic:
+                        print('could not find', key)
+                return {key: dic[key] for key in keys if key in dic}
             else:
                 key = path.pop()
                 #return {key: rec(dic[key])}
@@ -115,7 +138,7 @@ class ImportHud:
 
     def collect_font_defs(self, fonts):
         fonts = self.collect_at(self.clientscheme, ['Scheme', 'Fonts'], fonts)
-        font_names = collect_values_from_keys(fonts, permute(["name"]))
+        font_names = collect_values_from_keys(fonts, ["name"])
 
         font_names = list(set(font_names))
 
@@ -152,21 +175,22 @@ class OutHud:
         # todo translations/renaming
 
         colors = {'Scheme':
-                  {'Colors': {k: v for k, v in f.color_defs.items() for f in self.features}}}
+                  {'Colors': {k: v for f in self.features for k, v in f.color_defs.items()}}}
 
         self.splice('resource/clientscheme.res', colors)
         # todo check no font overlap
         fonts = {'Scheme':
                  {'Fonts':
-                  {k: v for k, v in f.font_defs.items()
-                   for f in self.features}}}
+                  {k: v
+                   for f in self.features
+                   for k, v in f.font_defs.items()}}}
         self.splice('resource/clientscheme.res', fonts)
 
         # get max index of existing custom font definitions
         customfonts = read.parse_file(self.outdir / 'resource/clientscheme.res')['Scheme']['CustomFontFiles']
         maxkey = max(int(k) for k in customfonts.keys()) + 1
 
-        filedefs = set((d['name'], d['font']) for d in f.font_filedefs for f in self.features)
+        filedefs = set((d['name'], d['font']) for f in self.features for d in f.font_filedefs)
 
         # splice in new custom font definitions
         i = maxkey
@@ -179,7 +203,7 @@ class OutHud:
 
         topkey, _ = read.parse_file(self.outdir / 'scripts/hudlayout.res').popitem()
 
-        hudlayout = {topkey: {k: v for k, v in f.hudlayout_changes.items() for f in self.features}}
+        hudlayout = {topkey: {k: v for f in self.features for k, v in f.hudlayout_changes.items()}}
         self.splice('scripts/hudlayout.res', hudlayout)
 
         for f in self.features:
@@ -192,9 +216,10 @@ class OutHud:
         for f in self.features:
             for frompath, topath in f.raw_copies.items():
                 copy(frompath, self.outdir / topath)
-        # todo copy files (using splice?)
-        # todo copy raw font files
-        # copy raw images
+        # TODO copy raw images
+
+        new_events = {event: cmds for f in self.features for event, cmds in f.event_copies.items()}
+        self.write_events(new_events)
 
         return outdir
 
@@ -206,10 +231,6 @@ class OutHud:
             f.write('\n// file imported by mixer from %s' % tk)
 
     def splice(self, fname, splice_dict, tk = None):
-
-        def prepend_file(fname, new_line):
-            with open(fname) as f: data = f.read()
-            with open(fname, 'w') as f: f.write(new_line + '\n' + data)
 
         fname = self.outdir / fname
         assert fname.exists() and fname.suffix == ".res"
@@ -237,6 +258,24 @@ class OutHud:
         with open(included_file, 'w') as f:
             f.write(format_dict(0, splice_dict))
 
+    def write_events(self, events):
+        manifest = self.outdir / 'scripts' / 'hudanimations_manifest.txt'
+        if manifest.resolve().exists():
+            with open(manifest) as f:
+                files = ManifestParser(f.read()).animation_files
+                new_name = gen_name('scripts/hudanimations_mixer.txt', files)
+                files.insert(0, new_name)
+        else:
+            files = ['scripts/hudanimations_mixer.txt',
+                     'scripts/hudanimations.txt',
+                     'scripts/hudanimations_tf.txt']
+            new_name = files[0]
+
+        with open(manifest, 'w') as f:
+            f.write(format_manifest(files))
+
+        with open(self.outdir / new_name, 'w') as f:
+            f.write(format_events(events))
 
 
 def ident(n):
@@ -252,7 +291,7 @@ def wrap(string):
         return '"' + string + '"'
 
 
-def format_dict(i, dic, skip = True):
+def format_dict(i, dic, skip=True):
     if type(dic) == str:
         return wrap(dic)
 

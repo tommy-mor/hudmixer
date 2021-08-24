@@ -3,6 +3,7 @@ from shutil import copytree, copy, move
 import os
 
 import read as r
+import animation
 
 
 def translate_string(st, tr):
@@ -11,20 +12,37 @@ def translate_string(st, tr):
     return st
 
 
-def translate_dict(dic, tr):
-    keys = list(dic.keys())
-    for k in keys:
+def translate_dict(dic, tr, at):
+    # only translate when keys is one of 'at'
+    assert type(dic) == dict
+
+    new = {}
+    for k,v in dic.items():
         newkey = translate_string(k, tr)
-        dic[newkey] = dic[k]
-        if newkey != k:
-            del dic[k]
-
-        val = dic[newkey]
-        if type(val) == dict:
-            translate_dict(val, tr)
+        if type(v) == str:
+            if k in at:
+                new[newkey] = translate_string(v, tr)
+            else:
+                new[newkey] = v
         else:
-            dic[newkey] = translate_string(val, tr)
+            new[newkey] = translate_dict(v, tr, at)
+    return new
 
+def is_color(st):
+    sp = st.split()
+    return len(sp) == 4 and all(c.isnumeric() for c in sp)
+
+
+def permute(strings):
+    r = []
+    for s in strings:
+        r.append(s)
+        r.append(s.lower())
+    return list(set(r))
+
+COLOR_STRINGS = permute(["fgColor", "bgColor", "fgColor_Override", "bgColor_Override", "color_outline"])
+FONT_STRINGS = permute(["font", "font_minmode"])
+COLOR_ANIM_STRINGS = permute(["FgColor", "BgColor", "Text2Color", "Ammo2Color"])
 
 class Feature:
     def __init__(self, hud):
@@ -36,38 +54,43 @@ class Feature:
         self.hudlayout_changes = {}
         self.file_copies = {}
         self.raw_copies = {}
+        self.event_copies = {}
 
     def add_changes(self, dic, new):
         # TODO assert any overlap must be equal
         r.merge_dict(new, dic)
 
-    def collect_file(self, f):
-        # copy entire file
-
-        # collect all color definitions
-        colors = self.fromhud.collect(f, ["fgColor", "bgColor"])
-        print('colors', colors)
+    def add_colors(self, colors):
+        colors = list(set([c for c in colors if not is_color(c)]))
 
         translation_colors = {k: k + "_" + self.fromhud.translation_key for k in colors}
 
         colordefs = self.fromhud.collect_color_defs(colors)
 
-        translate_dict(colordefs, translation_colors)
-        print('colordefs', colordefs)
+        colordefs = translate_dict(colordefs, translation_colors, COLOR_STRINGS)
 
         # check that colors are colors
         for v in colordefs.values():
             a, b, c, d = v.split(' ')
             int(a), int(b), int(c), int(d)
 
-        fontnames = self.fromhud.collect(f, ["font", "font_minmode"])
+        self.add_changes(self.color_defs, colordefs)
+        return translation_colors
+
+    def collect_file(self, f):
+
+        # collect all color definitions
+        translation_colors = self.add_colors(self.fromhud.collect(f, COLOR_STRINGS))
+
+        fontnames = self.fromhud.collect(f, FONT_STRINGS)
 
         translation_fonts = {k: k + "_" + self.fromhud.translation_key for k in fontnames}
 
         fontnames = set(list(fontnames))
+
         fontdefs, fontfiledefs, fontpaths = self.fromhud.collect_font_defs(fontnames)
 
-        translate_dict(fontdefs, translation_fonts)
+        fontdefs = translate_dict(fontdefs, translation_fonts, FONT_STRINGS)
 
         fontpath_translate = {}
 
@@ -79,26 +102,20 @@ class Feature:
             self.raw_copies[p] = topath
             fontpath_translate[path] = str(topath)
 
-        for fontdef in fontfiledefs:
-            translate_dict(fontdef, fontpath_translate)
+        fontfiledefs = [translate_dict(fontdef, fontpath_translate, FONT_STRINGS) for fontdef in fontfiledefs]
 
         fi = r.parse_file(self.fromhud.srcdir / f)
 
         # TODO maybe make it only translate specific fields...
-        translate_dict(fi, translation_fonts)
-        translate_dict(fi, translation_colors)
+        fi = translate_dict(fi, translation_fonts, FONT_STRINGS)
+        fi = translate_dict(fi, translation_colors, COLOR_STRINGS)
 
-        self.add_changes(self.color_defs, colordefs)
         self.add_changes(self.font_defs, fontdefs)
         self.font_filedefs.extend(fontfiledefs)
         self.add_changes(self.file_copies, {f: fi})
 
-        # TODO rename to avoid collisiog
-
-        # TODO copy font files
         # TODO copy image files
 
-        # get font file index (from basehud and outhud)
 
     def hudlayout_grab(self, itemname):
         hl = self.fromhud.hudlayout
@@ -108,10 +125,16 @@ class Feature:
             ret = hl[itemname]
         self.hudlayout_changes[itemname] = ret
 
+    def animation_grab(self, eventname):
+        if eventname in self.fromhud.events:
+            event = self.fromhud.events[eventname]
 
-        # don't splice directly, but return our dicts to outhud for merging
+            colors = animation.collect_list(event, COLOR_ANIM_STRINGS)
+
+            translation_colors = self.add_colors(colors)
+
+            event = animation.translate_clist_colors(event, translation_colors, COLOR_ANIM_STRINGS)
+            self.event_copies[eventname] = event
 
 
-
-# PROMBLEM: if the imported file does not have a block, it will not override the base one, and it will live on
-
+# PROBLEM: animations don't load

@@ -11,7 +11,20 @@ class Buf:
         self.st = st
 
     def is_valid(self):
-        return any(c not in WS for c in self.st)
+        while 1:
+            if all(c in WS for c in self.st):
+                return False
+
+            self.eat_white_space()
+
+            if (not self.eat_cpp_comment()) \
+               and (not self.eat_brackets()):
+                break
+
+        if len(self.st) == 0:
+            return False
+
+        return True
 
     def peek(self):
         return self.st[0]
@@ -49,8 +62,12 @@ class Buf:
 
     def eat_until(self, cs):
         # does not include the end character
+        if self.st == '':
+            return ''
         i = 0
-        while self.st[i] not in cs:
+        length = len(self.st) - 1 
+
+        while i < length and self.st[i] not in cs:
             i += 1
 
         cap = self.st[:i]
@@ -65,14 +82,6 @@ class Buf:
 
         #return '"' + s + '"'
         return s
-
-
-def strip_quotes(string):
-    '''remove quotes if they are there'''
-    if string[0] == '"':
-        assert string[-1] == '"'
-        return string[1:-1]
-    return string
 
 
 def merge_dict(new, modify):
@@ -101,12 +110,11 @@ class Parser:
 
         while self.buf.is_valid():
             token, _ = self.read_token()
-            stripped = strip_quotes(token)
-            if stripped == "#include" or stripped == "#base":
+            if token == "#include" or token == "#base":
                 # include is appended, and base is merged
                 # but not sure how those are different so..
                 includefile, _ = self.read_token()
-                f = (self.path / strip_quotes(includefile)).resolve()
+                f = (self.path / includefile).resolve()
                 if f.is_file():
                     new_items = parse_file(f.resolve())
                     # TODO make sure that it doesn't override
@@ -118,7 +126,8 @@ class Parser:
                 assert opn == "{"
                 assert not qtd
 
-                self.items[token] = self.recursive_parse_file()
+                merge_dict({token : self.recursive_parse_file()}, self.items)
+
 
     def recursive_parse_file(self):
         # parse until closing block, returning dict of pairs
