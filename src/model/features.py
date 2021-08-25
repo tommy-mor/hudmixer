@@ -1,9 +1,7 @@
 from pathlib import Path
-from shutil import copytree, copy, move
-import os
 
-import read as r
-import animation
+import model.read as r
+import model.animation as animation
 
 
 def translate_string(st, tr):
@@ -96,15 +94,17 @@ class Feature:
 
         for path in fontpaths:
             p = self.fromhud.srcdir / path
-            assert p.resolve().is_file()
 
-            topath = Path('mixer/fonts') / p.name
-            self.raw_copies[p] = topath
-            fontpath_translate[path] = str(topath)
+            if p.resolve().is_file():
+                topath = Path('mixer/fonts') / p.name
+                self.raw_copies[p] = topath
+                fontpath_translate[path] = str(topath)
+            else:
+                print('not importing default font', p)
 
         fontfiledefs = [translate_dict(fontdef, fontpath_translate, FONT_STRINGS) for fontdef in fontfiledefs]
 
-        fi = r.parse_file(self.fromhud.srcdir / f)
+        fi = self.fromhud.parse_file(f)
 
         # TODO maybe make it only translate specific fields...
         fi = translate_dict(fi, translation_fonts, FONT_STRINGS)
@@ -133,7 +133,6 @@ class Feature:
         if eventname in self.fromhud.events:
             event = self.fromhud.events[eventname]
 
-
             colors = animation.collect_list(event, COLOR_ANIM_STRINGS)
 
             translation_colors = self.add_colors(colors)
@@ -146,7 +145,3 @@ class Feature:
                 if cmd[0] in ["RunEvent"]:
                     otherevent = cmd[1]
                     self.animation_grab(otherevent)
-                    
-
-
-# PROBLEM: animations don't load

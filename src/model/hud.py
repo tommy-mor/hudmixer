@@ -1,10 +1,13 @@
 import os
-import read
+import model.read as read
 from pathlib import Path
 from shutil import copytree, copy, move
-from features import Feature
-from animation import AnimationParser, ManifestParser, format_manifest, format_events
+from model.features import Feature
 
+from model.animation import AnimationParser, ManifestParser, format_manifest, format_events
+
+# for backups when files are missing in custom huds
+DEFAULT_HUD = Path('../huds/TF2-Default-Hud')
 
 # TODO use this more
 def gen_name(desired, existing_names):
@@ -16,14 +19,20 @@ def gen_name(desired, existing_names):
         return desired
 
 
+class HudException(Exception):
+    pass
+
+
 def ensure_is_hud(fname):
     path = Path(fname)
 
     clientscheme = path / "resource" / "clientscheme.res"
-    assert clientscheme.exists() and not clientscheme.is_dir()
+    if not (clientscheme.exists() and not clientscheme.is_dir()):
+        raise HudException('this directory is not a hud')
 
     hudlayout = path / "scripts" / "hudlayout.res"
-    assert hudlayout.exists() and not hudlayout.is_dir()
+    if not (hudlayout.exists() and not hudlayout.is_dir()):
+        raise HudException('this directory is not a hud')
 
 
 def collect_values_from_keys(dic, keys):
@@ -97,24 +106,41 @@ class ImportHud:
 
     def collect(self, f, qry):
 
-        items = read.parse_file(self.srcdir / f)
+        if (self.srcdir / f).exists():
+            items = read.parse_file(self.srcdir / f)
+        else:
+            # fallthrough for missing files
+            items = read.parse_file(DEFAULT_HUD / f)
         return collect_values_from_keys(items, qry)
 
-    def collect_at(self, dic, path, keys, wrap=False):
+    def collect_clientscheme(self, path, keys):
+        missing = []
 
-        def rec(dic):
+        def rec(dic, path, keys):
             if len(path) == 0:
                 for key in keys:
                     if key not in dic:
                         print('could not find', key)
+                        missing.append(key)
                 return {key: dic[key] for key in keys if key in dic}
             else:
-                key = path.pop()
-                #return {key: rec(dic[key])}
-                return rec(dic[key])
+                key = path[0]
+                return rec(dic[key], path[1:], keys)
 
-        path.reverse()
-        return rec(dic)
+        found = rec(self.clientscheme, path, keys)
+        defaultclientscheme = DEFAULT_HUD / 'resource/clientscheme.res'
+        founddefault = rec(read.parse_file(defaultclientscheme), path, [*missing])
+        read.merge_dict(found, founddefault)
+
+        return found
+
+    def parse_file(self, f):
+        d = self.srcdir / f
+        if not d.exists():
+            print('cound not find', f, 'using default')
+            d = DEFAULT_HUD / f
+
+        return read.parse_file(d)
 
     def find_font_defs(self, fontnames):
 
@@ -134,10 +160,10 @@ class ImportHud:
 
     def collect_color_defs(self, colors):
 
-        return self.collect_at(self.clientscheme, ['Scheme', 'Colors'], colors)
+        return self.collect_clientscheme(['Scheme', 'Colors'], colors)
 
     def collect_font_defs(self, fonts):
-        fonts = self.collect_at(self.clientscheme, ['Scheme', 'Fonts'], fonts)
+        fonts = self.collect_clientscheme(['Scheme', 'Fonts'], fonts)
         font_names = collect_values_from_keys(fonts, ["name"])
 
         font_names = list(set(font_names))

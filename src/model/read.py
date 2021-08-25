@@ -97,10 +97,13 @@ def merge_dict(new, modify):
 
 
 class Parser:
-    def __init__(self, inputstring, path=''):
+    def __init__(self, inputstring, path='', parsed=[]):
         self.path = Path(path)  # for base and include
+        self.parsed = parsed # for avoiding parsing file twice while following base
+
         self.items = {}
         self.buf = Buf(inputstring)
+        self.visited_filenames = []
         self.parse_file()
 
     def get_text(self):
@@ -115,8 +118,9 @@ class Parser:
                 # but not sure how those are different so..
                 includefile, _ = self.read_token()
                 f = (self.path / includefile).resolve()
-                if f.is_file():
-                    new_items = parse_file(f.resolve())
+                if f.is_file() and f not in self.parsed:
+                    # {HERE} Fix infinite looping of parsing
+                    new_items = parse_file(f.resolve(), parsed=[f, *self.parsed])
                     # TODO make sure that it doesn't override
                     # values, it keeps oldest ones
                     self.items = merge_dict(new_items, self.items)
@@ -170,7 +174,7 @@ class Parser:
         # TODO handle conditionals []
 
 
-def parse_file(fname):
+def parse_file(fname, parsed=[]):
     path = Path(fname).resolve().parent
     with open(fname) as f:
-        return Parser(f.read(), path).items
+        return Parser(f.read(), path, parsed=parsed).items

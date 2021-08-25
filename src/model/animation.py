@@ -1,4 +1,4 @@
-from read import Parser
+from model.read import Parser
 
 COMMAND_ARITIES = {'Animate': 6,
                    'RunEvent': 2,
@@ -8,7 +8,15 @@ COMMAND_ARITIES = {'Animate': 6,
                    'SetFont': 4,
                    'SetTexture': 4,
                    'SetString': 4,
-                   'SetVisible': 3
+                   'SetVisible': 3,
+
+                   # only in hudanimations_tf
+                   'FireCommand': 2,
+                   'RunEventChild': 3,
+                   'SetInputEnabled': 3,
+                   'PlaySound': 2,
+                   'firecommand': 2,
+                   'FireCommand': 2,
                    }
 
 class ManifestParser(Parser):
@@ -68,7 +76,7 @@ class AnimationParser(Parser):
                 if interpolator.lower() in ['pulse', 'flicker', 'gain', 'bias']:
                     resttokens = self.read_n_tokens(3)
                 else:
-                    assert interpolator.lower() in ['linear', 'accel', 'deaccel', 'spline']
+                    assert interpolator.lower() in ['linear', 'bounce', 'accel', 'deaccel', 'spline'], interpolator
                     resttokens = self.read_n_tokens(2)
 
                 commands.append([cmd, *starttokens, interpolator, *resttokens])

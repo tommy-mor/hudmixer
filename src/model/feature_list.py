@@ -1,4 +1,4 @@
-from features import Feature
+from .features import Feature
 
 
 class Ammo(Feature):
