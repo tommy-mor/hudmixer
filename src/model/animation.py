@@ -43,6 +43,7 @@ class ManifestParser(Parser):
 class AnimationParser(Parser):
 
     def parse_file(self):
+        self.events = {}
         while self.buf.is_valid():
             self.parse_event()
 
@@ -84,7 +85,7 @@ class AnimationParser(Parser):
                 
                 assert cmd in COMMAND_ARITIES, cmd
                 commands.append([cmd, *self.read_n_tokens(COMMAND_ARITIES[cmd])])
-        self.items[name] = commands
+        self.events[name] = commands
 
 
 def collect_list(li: "[Commands]", keys):

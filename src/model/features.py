@@ -3,6 +3,8 @@ from pathlib import Path
 import model.read as r
 import model.animation as animation
 
+from model.util import ResDict
+
 
 def translate_string(st, tr):
     for frm, to in tr.items():
@@ -12,10 +14,10 @@ def translate_string(st, tr):
 
 def translate_dict(dic, tr, at):
     # only translate when keys is one of 'at'
-    assert type(dic) == dict
+    assert type(dic) == ResDict
 
-    new = {}
-    for k,v in dic.items():
+    new = ResDict()
+    for k, v in dic.items():
         newkey = translate_string(k, tr)
         if type(v) == str:
             if k in at:
@@ -25,6 +27,7 @@ def translate_dict(dic, tr, at):
         else:
             new[newkey] = translate_dict(v, tr, at)
     return new
+
 
 def is_color(st):
     sp = st.split()
@@ -46,22 +49,25 @@ class Feature:
     def __init__(self, hud):
         self.fromhud = hud
 
-        self.font_defs = {}
+        self.font_defs = ResDict()
         self.font_filedefs = []
-        self.color_defs = {}
-        self.hudlayout_changes = {}
-        self.file_copies = {}
-        self.raw_copies = {}
-        self.event_copies = {}
+        self.color_defs = ResDict()
+        self.hudlayout_changes = ResDict()
+        self.file_copies = ResDict()
+        self.raw_copies = {} # fname to path
+        self.event_copies = {} # event name to [cmds]
 
     def add_changes(self, dic, new):
         # TODO assert any overlap must be equal
-        r.merge_dict(new, dic)
+        if type(new) != ResDict:
+            import pdb
+            pdb.set_trace()
+        dic.deep_merge_with(new)
 
     def add_colors(self, colors):
         colors = list(set([c for c in colors if not is_color(c)]))
 
-        translation_colors = {k: k + "_" + self.fromhud.translation_key for k in colors}
+        translation_colors = ResDict({k: k + "_" + self.fromhud.translation_key for k in colors})
 
         colordefs = self.fromhud.collect_color_defs(colors)
 
@@ -82,7 +88,7 @@ class Feature:
 
         fontnames = self.fromhud.collect(f, FONT_STRINGS)
 
-        translation_fonts = {k: k + "_" + self.fromhud.translation_key for k in fontnames}
+        translation_fonts = ResDict({k: k + "_" + self.fromhud.translation_key for k in fontnames})
 
         fontnames = set(list(fontnames))
 
@@ -112,10 +118,9 @@ class Feature:
 
         self.add_changes(self.font_defs, fontdefs)
         self.font_filedefs.extend(fontfiledefs)
-        self.add_changes(self.file_copies, {f: fi})
+        self.file_copies[f] = fi
 
         # TODO copy image files
-
 
     def hudlayout_grab(self, itemname):
         hl = self.fromhud.hudlayout

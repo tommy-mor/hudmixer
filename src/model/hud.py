@@ -3,6 +3,7 @@ import model.read as read
 from pathlib import Path
 from shutil import copytree, copy, move
 from model.features import Feature
+from model.util import ResDict
 
 from model.animation import AnimationParser, ManifestParser, format_manifest, format_events
 
@@ -42,7 +43,7 @@ def collect_values_from_keys(dic, keys):
             if key in keys:
                 ret.append(value)
             else:
-                if type(value) == dict:
+                if type(value) == ResDict:
                     search_rec(value)
 
     search_rec(dic)
@@ -55,9 +56,9 @@ class BaseHud:
 
     def __init__(self, fname):
         self.srcdir = Path(fname)
+        self.translation_key = self.srcdir.name
 
         # relativefname :=> new file contents
-        self.changedFiles = {}
         ensure_is_hud(fname)
 
 
@@ -95,14 +96,13 @@ class ImportHud:
                 # problem: these should be in order, they are not.
                 newpath = self.srcdir / path
                 if newpath.resolve().exists():
-                    print('reading ', newpath)
                     with open(newpath) as f:
                         # shallow merge
-                        self.events.update(AnimationParser(f.read()).items)
+                        self.events.update(AnimationParser(f.read()).events)
         else:
             hudanimations = self.srcdir / 'scripts' / 'hudanimations.txt'
             with open(hudanimations) as f:
-                self.events.update(AnimationParser(f.read()).items)
+                self.events.update(AnimationParser(f.read()).events)
 
     def collect(self, f, qry):
 
@@ -122,7 +122,11 @@ class ImportHud:
                     if key not in dic:
                         print('could not find', key)
                         missing.append(key)
-                return {key: dic[key] for key in keys if key in dic}
+                ret = ResDict()
+                for key in keys:
+                    if key in dic:
+                        ret[key] = dic[key]
+                return ret
             else:
                 key = path[0]
                 return rec(dic[key], path[1:], keys)
@@ -130,7 +134,8 @@ class ImportHud:
         found = rec(self.clientscheme, path, keys)
         defaultclientscheme = DEFAULT_HUD / 'resource/clientscheme.res'
         founddefault = rec(read.parse_file(defaultclientscheme), path, [*missing])
-        read.merge_dict(found, founddefault)
+
+        found.deep_merge_with(founddefault)
 
         return found
 
@@ -148,7 +153,7 @@ class ImportHud:
         fontfiles = []
 
         for key, val in self.clientscheme['Scheme']['CustomFontFiles'].items():
-            if type(val) == dict:
+            if type(val) == ResDict:
                 assert 'name' in val
                 assert 'font' in val
 
@@ -210,6 +215,7 @@ class OutHud:
                   {k: v
                    for f in self.features
                    for k, v in f.font_defs.items()}}}
+
         self.splice('resource/clientscheme.res', fonts)
 
         # get max index of existing custom font definitions
@@ -257,6 +263,10 @@ class OutHud:
             f.write('\n// file imported by mixer from %s' % tk)
 
     def splice(self, fname, splice_dict, tk = None):
+        print('splicing', fname, list(splice_dict.keys()))
+
+        if type(splice_dict) == dict:
+            splice_dict = ResDict(dict=splice_dict)
 
         fname = self.outdir / fname
         assert fname.exists() and fname.suffix == ".res"
@@ -270,11 +280,10 @@ class OutHud:
         included_file_name = os.path.relpath(included_file, fname.parent)
         old_file_new_name_nice = os.path.relpath(old_file_new_name, fname.parent)
 
-
         if old_file_new_name.resolve().exists():
             # we have already modified things.
             items = read.parse_file(included_file)
-            read.merge_dict(items, splice_dict)
+            splice_dict.deep_merge_with(items)
         else:
             move(fname, old_file_new_name)
             with open(fname, 'w') as f:

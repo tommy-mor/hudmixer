@@ -5,6 +5,8 @@ from pathlib import Path
 # maybe keep track of line numbers so we can sneak new values in better?
 WS = " \t\n\r"
 
+from model.util import ResDict
+
 
 class Buf:
     def __init__(self, st):
@@ -84,24 +86,12 @@ class Buf:
         return s
 
 
-def merge_dict(new, modify):
-    '''deep merge two dictionaries'''
-    # TODO
-    for key, value in new.items():
-        if isinstance(value, dict):
-            node = modify.setdefault(key, {})
-            merge_dict(value, node)
-        else:
-            modify[key] = value
-    return modify
-
-
 class Parser:
     def __init__(self, inputstring, path='', parsed=[]):
         self.path = Path(path)  # for base and include
         self.parsed = parsed # for avoiding parsing file twice while following base
 
-        self.items = {}
+        self.items = ResDict()
         self.buf = Buf(inputstring)
         self.visited_filenames = []
         self.parse_file()
@@ -119,23 +109,28 @@ class Parser:
                 includefile, _ = self.read_token()
                 f = (self.path / includefile).resolve()
                 if f.is_file() and f not in self.parsed:
+                    print('parsing ', f)
                     # {HERE} Fix infinite looping of parsing
                     new_items = parse_file(f.resolve(), parsed=[f, *self.parsed])
                     # TODO make sure that it doesn't override
                     # values, it keeps oldest ones
-                    self.items = merge_dict(new_items, self.items)
+                    self.items.deep_merge_with(new_items)
+
             else:
                 opn, qtd = self.read_token()
 
                 assert opn == "{"
                 assert not qtd
 
-                merge_dict({token : self.recursive_parse_file()}, self.items)
+                res = ResDict()
+                res[token] = self.recursive_parse_file()
+
+                self.items.deep_merge_with(res)
 
 
     def recursive_parse_file(self):
         # parse until closing block, returning dict of pairs
-        items = {}
+        items = ResDict()
         while 1:
             key, qtd = self.read_token()
 
