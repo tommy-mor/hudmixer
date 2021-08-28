@@ -39,7 +39,7 @@ class MainWindow(QMainWindow):
         d = QFileDialog.getExistingDirectory(self, "Directory To Export To", None, QFileDialog.ShowDirsOnly)
 
         if d:
-            exportdir = Path(d) / 'exported_hud'
+            exportdir = Path(d) / 'MIXER_EXPORTED_HUD'
             if exportdir.exists():
                 reply = QMessageBox.question(self, "Export Overwrite", "Do you want to overwrite hud at %s" % exportdir,
                                              QMessageBox.Yes, QMessageBox.No)
