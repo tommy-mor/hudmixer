@@ -124,8 +124,7 @@ class Parser:
                 opn, qtd = self.read_token()
 
 
-                import pdb
-                assert opn == "{", pdb.set_trace()
+                assert opn == "{", opn
                 assert not qtd
 
                 res = ResDict()

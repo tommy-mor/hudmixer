@@ -83,8 +83,7 @@ class AnimationParser(Parser):
                 commands.append([cmd, *starttokens, interpolator, *resttokens])
             else:
                 
-                import pdb
-                assert cmd in COMMAND_ARITIES, pdb.set_trace()
+                assert cmd in COMMAND_ARITIES, cmd
                 commands.append([cmd, *self.read_n_tokens(COMMAND_ARITIES[cmd])])
         self.events[name] = commands
 
