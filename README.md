@@ -1,6 +1,9 @@
 # hudmixer
 mix tf2 huds together
 
+![screenshot](screenshot.png)
+
+
 ## installation
 
 On windows, download and extract ``hudmixer-windows-latest.zip`` from the releases tab to the right.
