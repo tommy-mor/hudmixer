@@ -1,6 +1,6 @@
 import sys
 
-from qtpy.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication
 from ui.interface import MainWindow
 
 assert __name__ == '__main__'

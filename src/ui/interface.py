@@ -1,7 +1,6 @@
 import sys
 
-from qtpy.QtWidgets import QMainWindow, QTreeWidget, QTreeWidgetItem, QApplication, QFileDialog, QErrorMessage, QVBoxLayout, QPushButton, QWidget, QMessageBox
-from qtpy import QtCore
+from PySide6.QtWidgets import QMainWindow, QTreeWidget, QTreeWidgetItem, QApplication, QFileDialog, QErrorMessage, QVBoxLayout, QPushButton, QWidget, QMessageBox
 
 import model.feature_list as fl
 import model.hud as hud
