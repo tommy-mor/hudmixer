@@ -50,6 +50,7 @@ class Buf:
             return False
 
         self.eat_until("\n")
+        self.eat_one_char()
         return True
 
     def eat_brackets(self):
@@ -59,11 +60,13 @@ class Buf:
 
         self.eat_one_char()
         self.eat_until("]")
-        assert self.st[0] != "]"
+        assert self.st[0] == "]"
+        self.eat_one_char()
         return True
 
     def eat_until(self, cs):
-        # does not include the end character
+        # ret does not include the end character
+        # but st does
         if self.st == '':
             return ''
         i = 0
@@ -73,7 +76,7 @@ class Buf:
             i += 1
 
         cap = self.st[:i]
-        self.st = self.st[i + 1 :]
+        self.st = self.st[i:]
         return cap
 
     def get_deliminited_string(self):
@@ -81,7 +84,8 @@ class Buf:
         self.st = self.st[1:]
 
         s = self.eat_until('"')
-
+        assert self.st[0] == '"'
+        self.eat_one_char()
         #return '"' + s + '"'
         return s
 
@@ -119,7 +123,9 @@ class Parser:
             else:
                 opn, qtd = self.read_token()
 
-                assert opn == "{"
+
+                import pdb
+                assert opn == "{", pdb.set_trace()
                 assert not qtd
 
                 res = ResDict()
@@ -164,7 +170,7 @@ class Parser:
             self.buf.eat_one_char()
             return c, False
 
-        token = self.buf.eat_until(WS)
+        token = self.buf.eat_until(WS + '}{')
         return token, False
         # TODO handle conditionals []
 

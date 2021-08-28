@@ -1,5 +1,6 @@
 from model.hud import ImportHud, BaseHud, OutHud
 import model.read as read
+import model.features as features
 
 import model.feature_list as fl
 import glob
@@ -43,6 +44,17 @@ def overwrite_test():
     assert ammo['xpos'] == '0'
     assert ammo['xpos_minmode'] == '0'
 
+    test = ImportHud(outdir)
+    fonts = test.collect('resource/ui/hudammoweapons.res', features.FONT_STRINGS)
+    colors = test.collect('resource/ui/hudammoweapons.res', features.COLOR_STRINGS)
+    # make sure all fonts are in clientscheme
+    for font in fonts:
+        assert 'm0re' in font
+        assert font in test.clientscheme['scheme']['fonts']
+    for color in colors:
+        assert 'm0re' in color
+        assert color in test.clientscheme['scheme']['colors']
+
 
 def caseinsensitive_test():
     # this must work because key lookups should be case insensitive...
@@ -59,6 +71,62 @@ def caseinsensitive_test():
     assert 'Hudblack_ahud' in colors
 
 
+import model.read as r
+
+def parser_tests():
+    a = r.Buf('abcd')
+    a.eat_white_space()
+    assert a.st == 'abcd'
+
+    a = r.Buf('   abcd')
+    a.eat_white_space()
+    assert a.st == 'abcd'
+
+    a = r.Buf('   abcd   ')
+    a.eat_white_space()
+    assert a.st == 'abcd   '
+
+
+    a = r.Buf('   abcd   ')
+    b = a.eat_until('b')
+    assert b == '   a'
+    assert a.st == 'bcd   '
+
+    a = r.Parser("""//
+    //
+    // TRACKER SCHEME RESOURCE FILE
+    //
+    // sections:
+    //		colors			- all the colors used by the scheme
+    //		basesettings	- contains settings for app to use to draw controls
+    //		fonts			- list of all the fonts used by app
+    //		borders			- description of all the borders
+    //
+    //
+    Scheme {}""")
+    assert len(a.items['Scheme']) == 0
+
+
+    # can parse the one line things
+    a = r.Parser("""Scheme {blah blah}""")
+    assert a.items['Scheme']['blah'] == 'blah'
+
+    a = r.Parser("""Scheme {"blah" "blah"}""")
+    assert a.items['Scheme']['blah'] == 'blah'
+
+    
+    a = r.Parser(""""Scheme"{blah blah}""")
+    assert a.items['Scheme']['blah'] == 'blah'
+
+    a = r.Parser("""Scheme{blah blah}""")
+    assert a.items['Scheme']['blah'] == 'blah'
+
+    a = r.Parser("""Scheme{"te st tt" [xb360]"blah"}""")
+    assert a.items['Scheme']['te st tt'] == 'blah'
+
+
+
 overwrite_test()
 caseinsensitive_test()
 shutil.rmtree(outdir)
+parser_tests()
