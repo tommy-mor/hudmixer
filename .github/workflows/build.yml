@@ -52,7 +52,11 @@ jobs:
         run: pyinstaller --onefile src/run.py
         
       - name: Zip release files
-        run: 7z a hudmixer-${{matrix.os}}.zip ./dist/*
+        run: |
+          7z a hudmixer-${{matrix.os}}.zip ./dist/*
+          git submodule update --remote --merge
+          7z a hud-collection.zip ./huds/*
+        
 
       # TODO deal with exporting a zip of hud files in release thingy
       
@@ -61,4 +65,11 @@ jobs:
         with:
           repo_token: ${{secrets.GITHUB_TOKEN}}
           file: hudmixer-${{matrix.os}}.zip
+          tag: ${{github.ref}}
+          
+      - name: Upload hudpack zip
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{secrets.GITHUB_TOKEN}}
+          file: hud-collection.zip
           tag: ${{github.ref}}
