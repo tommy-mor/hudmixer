@@ -30,6 +30,9 @@ def big_test():
 
 
 def overwrite_test():
+    # this failed at one point because m0rehud hudlayout had multiple hudlayouts,
+    # and they were getting merged improperly
+
     basehud = BaseHud('../huds/rayshud')
     importhud = ImportHud('../huds/m0rehud/')
 
@@ -58,6 +61,7 @@ def overwrite_test():
 
 def caseinsensitive_test():
     # this must work because key lookups should be case insensitive...
+    # because one of the fonts in ahud is defined with different cases, this required the ResDict class
     basehud = BaseHud('../huds/rayshud')
     importhud = ImportHud('../huds/ahud/')
 
