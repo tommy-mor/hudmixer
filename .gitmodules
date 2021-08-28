@@ -22,6 +22,3 @@
 [submodule "huds/PV-Hud"]
 	path = huds/PV-Hud
 	url = https://github.com/Hypnootize/PV-Hud.git
-[submodule "huds/yayahud"]
-	path = huds/yayahud
-	url = https://github.com/Hypnootize/yayahud.git
