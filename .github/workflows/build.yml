@@ -49,7 +49,7 @@ jobs:
           python setup.py install
           
       - name: Build binary with PyInstaller
-        run: pyinstaller --onefile src/run.py
+        run: pyinstaller run.spec -y
         
       - name: Zip release files
         run: |
