@@ -243,7 +243,7 @@ class OutHud:
                 self.replace(fname, splice_dict, f.fromhud.translation_key)
 
         fontpath = (self.outdir / 'mixer' / 'fonts')
-        fontpath.mkdir()
+        fontpath.mkdir(exist_ok=True)
 
         for f in self.features:
             for frompath, topath in f.raw_copies.items():
