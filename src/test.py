@@ -10,7 +10,7 @@ from itertools import permutations
 from pathlib import Path
 
 
-outdir = Path('../outhud')
+outdir = Path('outhud')
 def big_test():
     # deli hud is nested..
     huddirs = [dir for dir in glob.glob('../huds/*') if 'Deli' not in dir]
@@ -33,6 +33,7 @@ def big_test():
                 outhud.add_feature(feature_cls(ImportHud(huddir)))
             outhud.export()
 
+    shutil.rmtree(outdir, ignore_errors=True)
 
 def overwrite_test():
     # this failed at one point because m0rehud hudlayout had multiple hudlayouts,
@@ -63,6 +64,7 @@ def overwrite_test():
         assert 'm0re' in color
         assert color in test.clientscheme['scheme']['colors']
 
+    shutil.rmtree(outdir, ignore_errors=True)
 
 def caseinsensitive_test():
     # this must work because key lookups should be case insensitive...
@@ -78,6 +80,8 @@ def caseinsensitive_test():
     hl = read.parse_file(outhud.outdir / 'resource' / 'clientscheme.res')
     colors = hl['Scheme']['Colors']
     assert 'Hudblack_ahud' in colors
+
+    shutil.rmtree(outdir, ignore_errors=True)
 
 
 import model.read as r
@@ -133,10 +137,35 @@ def parser_tests():
     a = r.Parser("""Scheme{"te st tt" [xb360]"blah"}""")
     assert a.items['Scheme']['te st tt'] == 'blah'
 
+def double_test():
+    basehud = BaseHud('../huds/rayshud')
+    importhud = ImportHud('../huds/ahud/')
+    shutil.rmtree(outdir, ignore_errors=True)
+    outhud = OutHud(basehud, outdir)
+    outhud.add_feature(fl.Scoreboard(importhud))
+    outhud.export()
+
+    secondoutdir = outdir.with_name('outhud2')
+    basehud2 = BaseHud(outdir)
+    importhud2 = ImportHud('../huds/m0rehud')
+    shutil.rmtree(secondoutdir, ignore_errors=True)
+    outhud = OutHud(basehud2, secondoutdir) 
+    outhud.add_feature(fl.Ammo(importhud2))
+    outhud.export()
+
+    hl = read.parse_file(outhud.outdir / 'resource' / 'clientscheme.res')
+    colors = hl['Scheme']['Colors']
+    assert 'ammo in clip_m0rehud' in colors
+    assert 'Hudblack_ahud' in colors
+    assert 'Blue_ahud' in colors
+
+    shutil.rmtree(outdir, ignore_errors=True)
+    shutil.rmtree(secondoutdir, ignore_errors=True)
+
+double_test()
 overwrite_test()
 caseinsensitive_test()
 parser_tests()
-
 #shutil.rmtree(outdir)
 #big_test()
 
