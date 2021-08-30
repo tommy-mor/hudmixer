@@ -4,8 +4,8 @@
 block_cipher = None
 
 
-a = Analysis(['src\\run.py'],
-             pathex=['C:\\Users\\hourLong_arnould\\programming\\hudmixer'],
+a = Analysis(['src/run.py'],
+             pathex=['.'],
              binaries=[],
              datas=[('huds/TF2-Default-Hud', 'huds/TF2-Default-Hud')],
              hiddenimports=[],
@@ -17,6 +17,7 @@ a = Analysis(['src\\run.py'],
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
+
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
 
