@@ -4,8 +4,8 @@
 block_cipher = None
 
 
-a = Analysis(['src/run.py'],
-             pathex=['.'],
+a = Analysis(['src\\run.py'],
+             pathex=['C:\\Users\\hourLong_arnould\\programming\\hudmixer'],
              binaries=[],
              datas=[('huds/TF2-Default-Hud', 'huds/TF2-Default-Hud')],
              hiddenimports=[],

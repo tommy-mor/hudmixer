@@ -3,12 +3,12 @@ import model.read as read
 from pathlib import Path
 from shutil import copytree, copy, move
 from model.features import Feature
-from model.util import ResDict
+from model.util import ResDict, resource_path
 
 from model.animation import AnimationParser, ManifestParser, format_manifest, format_events
 
 # for backups when files are missing in custom huds
-DEFAULT_HUD = Path('../huds/TF2-Default-Hud')
+DEFAULT_HUD = resource_path('huds/TF2-Default-Hud')
 
 # TODO use this more
 def gen_name(desired, existing_names):

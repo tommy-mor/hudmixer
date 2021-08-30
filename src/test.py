@@ -7,12 +7,15 @@ import glob
 import shutil
 
 from itertools import permutations
+from pathlib import Path
 
 
-outdir = '../outhud'
+outdir = Path('../outhud')
 def big_test():
-    huddirs = glob.glob('../huds/*')
+    # deli hud is nested..
+    huddirs = [dir for dir in glob.glob('../huds/*') if 'Deli' not in dir]
     for h in huddirs:
+        h = Path(h)
         basehud = BaseHud(h)
 
         without = list(set(huddirs) - set([h]))
@@ -21,12 +24,14 @@ def big_test():
         print('basehud', basehud.srcdir)
         for ordering in orderings:
 
-            shutil.rmtree(outdir, ignore_errors=True)
+            if outdir.exists():
+                shutil.rmtree(outdir)
+            assert not outdir.exists()
             outhud = OutHud(basehud, outdir)
             for feature_cls, huddir in zip(fl.classes, ordering):
                 print(feature_cls.__name__, 'from', huddir)
                 outhud.add_feature(feature_cls(ImportHud(huddir)))
-                outhud.export()
+            outhud.export()
 
 
 def overwrite_test():
@@ -128,9 +133,11 @@ def parser_tests():
     a = r.Parser("""Scheme{"te st tt" [xb360]"blah"}""")
     assert a.items['Scheme']['te st tt'] == 'blah'
 
-
-
 overwrite_test()
 caseinsensitive_test()
-shutil.rmtree(outdir)
 parser_tests()
+
+#shutil.rmtree(outdir)
+#big_test()
+
+# TODO test things like idhud

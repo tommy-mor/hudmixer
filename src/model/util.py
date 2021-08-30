@@ -56,3 +56,17 @@ b = 'blingus' in a
 a['Test'] = 'arst'
 assert a['test'] == 'arst'
 assert 'Test' in a.keys()
+
+import sys
+from pathlib import Path
+
+# adapted from
+# https://github.com/7x11x13/songs-to-youtube/blob/226026c86b8564db91e1a326a56eabb847c158b5/src/utils.py#L80
+def resource_path(relative_path):
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # it is parent dir because tests are run from inside src 
+        base_path = '..'
+    return Path(base_path) / relative_path
